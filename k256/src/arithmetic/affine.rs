@@ -124,6 +124,7 @@ impl FromEncodedPoint<Secp256k1> for AffinePoint {
     fn from_encoded_point(encoded_point: &EncodedPoint) -> Option<Self> {
         match encoded_point.coordinates() {
             sec1::Coordinates::Identity => Some(Self::identity()),
+            sec1::Coordinates::Compact { .. } => None,
             sec1::Coordinates::Compressed { x, y_is_odd } => {
                 AffinePoint::decompress(x, Choice::from(y_is_odd as u8)).into()
             }

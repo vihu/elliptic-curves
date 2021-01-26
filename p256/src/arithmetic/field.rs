@@ -72,6 +72,8 @@ impl PartialEq for FieldElement {
     }
 }
 
+impl Eq for FieldElement {}
+
 impl Default for FieldElement {
     fn default() -> Self {
         FieldElement::zero()
@@ -178,7 +180,7 @@ impl FieldElement {
         let (w3, w4) = adc64(self.0[3], rhs.0[3], carry);
 
         // Attempt to subtract the modulus, to ensure the result is in the field.
-        Self::sub_inner(
+        let (_, result) = Self::sub_inner(
             w0,
             w1,
             w2,
@@ -189,7 +191,8 @@ impl FieldElement {
             MODULUS.0[2],
             MODULUS.0[3],
             0,
-        )
+        );
+        result
     }
 
     /// Returns 2*self.
@@ -199,6 +202,14 @@ impl FieldElement {
 
     /// Returns self - rhs mod p
     pub const fn subtract(&self, rhs: &Self) -> Self {
+        let (_, result) = Self::sub_inner(
+            self.0[0], self.0[1], self.0[2], self.0[3], 0, rhs.0[0], rhs.0[1], rhs.0[2], rhs.0[3],
+            0,
+        );
+        result
+    }
+
+    pub const fn informed_subtract(&self, rhs: &Self) -> (u64, Self) {
         Self::sub_inner(
             self.0[0], self.0[1], self.0[2], self.0[3], 0, rhs.0[0], rhs.0[1], rhs.0[2], rhs.0[3],
             0,
@@ -218,7 +229,7 @@ impl FieldElement {
         r2: u64,
         r3: u64,
         r4: u64,
-    ) -> Self {
+    ) -> (u64, Self) {
         let (w0, borrow) = sbb64(l0, r0, 0);
         let (w1, borrow) = sbb64(l1, r1, borrow);
         let (w2, borrow) = sbb64(l2, r2, borrow);
@@ -233,7 +244,7 @@ impl FieldElement {
         let (w2, carry) = adc64(w2, MODULUS.0[2] & borrow, carry);
         let (w3, _) = adc64(w3, MODULUS.0[3] & borrow, carry);
 
-        FieldElement([w0, w1, w2, w3])
+        (borrow, FieldElement([w0, w1, w2, w3]))
     }
 
     /// Montgomery Reduction
@@ -308,7 +319,7 @@ impl FieldElement {
         let (r7, r8) = adc64(r7, carry2, carry);
 
         // Result may be within MODULUS of the correct value
-        Self::sub_inner(
+        let (_, result) = Self::sub_inner(
             r4,
             r5,
             r6,
@@ -319,7 +330,8 @@ impl FieldElement {
             MODULUS.0[2],
             MODULUS.0[3],
             0,
-        )
+        );
+        result
     }
 
     /// Returns self * rhs mod p
@@ -623,6 +635,41 @@ mod tests {
         let two = one + &one;
         let four = two.square();
         assert_eq!(four.sqrt().unwrap(), two);
+    }
+
+    #[test]
+    fn informed() {
+        let one = FieldElement::one();
+        let two = one + &one;
+        let three = one + &two;
+        // Positive numbers
+        let (borrow, _) = one.informed_subtract(&two);
+        assert!(borrow > 0);
+        let (borrow, _) = three.informed_subtract(&two);
+        assert!(borrow == 0);
+        let (borrow, _) = three.informed_subtract(&three);
+        assert!(borrow == 0);
+        // Negative numbers
+        let neg_one = -one;
+        let neg_two = -two;
+        let neg_three = -three;
+        let (borrow, _) = neg_one.informed_subtract(&neg_two);
+        assert!(borrow == 0);
+        let (borrow, _) = neg_three.informed_subtract(&neg_two);
+        assert!(borrow > 0);
+        let (borrow, _) = neg_three.informed_subtract(&neg_three);
+        assert!(borrow == 0);
+
+        // Subtract negative number from positive
+        let (borrow, _) = three.informed_subtract(&neg_two);
+        // There will be a borrow because neg_two is modulo'd to the top end of the field.
+        assert!(borrow > 0);
+
+        // Subtract positive number from negative
+        // There will not be a borrow because neg_three is modulo'd to the top end of the field
+        // broken...
+        let (borrow, _) = neg_three.informed_subtract(&two);
+        assert!(borrow == 0);
     }
 
     proptest! {
