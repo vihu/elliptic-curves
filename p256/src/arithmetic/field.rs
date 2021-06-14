@@ -180,7 +180,7 @@ impl FieldElement {
         let (w3, w4) = adc(self.0[3], rhs.0[3], carry);
 
         // Attempt to subtract the modulus, to ensure the result is in the field.
-        let (_, result) = Self::sub_inner(
+        let (result, _) = Self::sub_inner(
             w0,
             w1,
             w2,
@@ -202,7 +202,7 @@ impl FieldElement {
 
     /// Returns self - rhs mod p
     pub const fn subtract(&self, rhs: &Self) -> Self {
-        let (_, result) = Self::sub_inner(
+        let (result, _) = Self::sub_inner(
             self.0[0], self.0[1], self.0[2], self.0[3], 0, rhs.0[0], rhs.0[1], rhs.0[2], rhs.0[3],
             0,
         );
@@ -210,7 +210,7 @@ impl FieldElement {
     }
 
     /// Returns self - rhs mod p
-    pub const fn informed_subtract(&self, rhs: &Self) -> (u64, Self) {
+    pub const fn informed_subtract(&self, rhs: &Self) -> (Self, u64) {
         Self::sub_inner(
             self.0[0], self.0[1], self.0[2], self.0[3], 0, rhs.0[0], rhs.0[1], rhs.0[2], rhs.0[3],
             0,
@@ -229,7 +229,7 @@ impl FieldElement {
         r2: u64,
         r3: u64,
         r4: u64,
-    ) -> (u64, Self) {
+    ) -> (Self, u64) {
         let (w0, borrow) = sbb(l0, r0, 0);
         let (w1, borrow) = sbb(l1, r1, borrow);
         let (w2, borrow) = sbb(l2, r2, borrow);
@@ -244,7 +244,7 @@ impl FieldElement {
         let (w2, carry) = adc(w2, MODULUS.0[2] & borrow, carry);
         let (w3, _) = adc(w3, MODULUS.0[3] & borrow, carry);
 
-        (borrow, FieldElement([w0, w1, w2, w3]))
+        (FieldElement([w0, w1, w2, w3]), borrow)
     }
 
     /// Montgomery Reduction
@@ -319,7 +319,7 @@ impl FieldElement {
         let (r7, r8) = adc(r7, carry2, carry);
 
         // Result may be within MODULUS of the correct value
-        let (_, result) = Self::sub_inner(
+        let (result, _) = Self::sub_inner(
             r4,
             r5,
             r6,

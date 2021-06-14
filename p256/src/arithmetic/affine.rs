@@ -186,7 +186,7 @@ impl DecompactPoint<NistP256> for AffinePoint {
             let y = (x * &x * &x + &(CURVE_EQUATION_A * &x) + &CURVE_EQUATION_B).sqrt();
             y.map(|y| {
                 let p_y = MODULUS.subtract(&y);
-                let (borrow, _) = p_y.informed_subtract(&y);
+                let (_, borrow) = p_y.informed_subtract(&y);
                 AffinePoint {
                     x,
                     y: if borrow != 0 { y } else { p_y },
