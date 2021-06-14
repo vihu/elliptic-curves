@@ -210,7 +210,7 @@ impl FieldElement {
     }
 
     /// Returns self - rhs mod p
-    pub const fn informed_subtract(&self, rhs: &Self) -> (Self, u64) {
+    pub(crate) const fn informed_subtract(&self, rhs: &Self) -> (Self, u64) {
         Self::sub_inner(
             self.0[0], self.0[1], self.0[2], self.0[3], 0, rhs.0[0], rhs.0[1], rhs.0[2], rhs.0[3],
             0,
