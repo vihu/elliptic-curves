@@ -308,6 +308,13 @@ mod tests {
         "048e38fc4ffe677662dde8e1a63fbcd45959d2a4c3004d27e98c4fedf2d0c14c0
         13ca9d8667de0c07aa71d98b3c8065d2e97ab7bb9cb8776bcc0577a7ac58acd4e"
     );
+    // This point is the result of raising the p256 curve base point, G, to the
+    // third power. It is the first such power of G that is _not_ compactable
+    // because its Y coordinate is larger than its negation (P - Y).
+    const UNCOMPACTABLE_BASEPOINT: &[u8] = &hex!(
+        "045ecbe4d1a6330a44c8f7ef951d4bf165e6c6b721efada985fb41661bc6e7fd6c
+        8734640c4998ff7e374b06ce1a64a2ecd82ab036384fb83d9a79b127a27d5032"
+    );
 
     #[test]
     fn uncompressed_round_trip() {
@@ -393,5 +400,14 @@ mod tests {
         // Do not do compact encoding as we want to keep uncompressed point
         let res = point.to_encoded_point(false);
         assert_eq!(res.as_bytes(), UNCOMPACT_BASEPOINT);
+    }
+
+    #[test]
+    fn not_compactable() {
+        let pubkey = EncodedPoint::from_bytes(UNCOMPACTABLE_BASEPOINT).unwrap();
+        let point = AffinePoint::from_encoded_point(&pubkey).unwrap();
+        let result = point.to_compact_encoded_point();
+        // Assert that the point wasn't compactable.
+        assert_eq!(result, None);
     }
 }
