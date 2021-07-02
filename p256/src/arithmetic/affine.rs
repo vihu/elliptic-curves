@@ -225,14 +225,16 @@ impl ToEncodedPoint<NistP256> for AffinePoint {
 impl ToCompactEncodedPoint<NistP256> for AffinePoint {
     /// Serialize this value as a  SEC1 compact [`EncodedPoint`]
     fn to_compact_encoded_point(&self) -> Option<EncodedPoint> {
+        let (p_y, borrow) = MODULUS.informed_subtract(&self.y);
+        assert_eq!(borrow, 0);
+        let (_, borrow) = p_y.informed_subtract(&self.y);
+        if borrow != 0 {
+            return None;
+        }
         let mut bytes = CompressedPoint::default();
         bytes[0] = Tag::Compact.into();
         bytes[1..(<NistP256 as Curve>::UInt::BYTE_SIZE + 1)].copy_from_slice(&self.x.to_bytes());
-        Some(EncodedPoint::conditional_select(
-            &EncodedPoint::from_bytes(bytes).expect("compact key"),
-            &EncodedPoint::identity(),
-            self.infinity,
-        ))
+        Some(EncodedPoint::from_bytes(bytes).expect("compact key"))
     }
 }
 
